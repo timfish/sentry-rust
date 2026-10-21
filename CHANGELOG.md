@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- The `sentry-minidump` crash event now carries the main hub's scope: user, tags, extra, contexts, breadcrumbs, transaction and fingerprint. Nothing is sent to the crash reporter until the crash: then a helper thread serializes the scope before the minidump is requested. The new `scope_timeout` option bounds the wait for the scope.
+
+### Deprecations
+
+- Deprecated the `set_user`, `set_tag`, `set_extra` and `add_breadcrumb` methods on `MinidumpIntegration`. The crash event now carries the main hub's scope, so set these values with `sentry::configure_scope` and `sentry::add_breadcrumb` instead.
+
 ## 0.49.3
 
 ### Features

@@ -28,13 +28,25 @@ fn main() {
     );
     // Everything after here runs in the app process only.
 
-    sentry::with_integration(|minidump: &sentry_minidump::MinidumpIntegration, _| {
-        minidump.set_user(Some(sentry::User {
+    // The crash event carries the main hub's scope, set here on the thread
+    // that called `sentry::init`.
+    sentry::configure_scope(|scope| {
+        scope.set_user(Some(sentry::User {
             username: Some("john_doe".into()),
             email: Some("john@doe.town".into()),
             ..Default::default()
         }));
+        scope.set_tag("set_on", "main");
+    });
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        message: Some("about to crash".into()),
+        ..Default::default()
     });
 
-    unsafe { sadness_generator::raise_segfault() };
+    // The scope is sent wherever the crash happens.
+    std::thread::spawn(|| {
+        unsafe { sadness_generator::raise_segfault() };
+    })
+    .join()
+    .ok();
 }

@@ -39,16 +39,23 @@ crash reporter for the whole process; there is no per-client isolation.
 Only the first initialization that has a DSN starts the reporter; later
 calls do nothing.
 
-## Scope sync
+## Scope
 
-Scope changes do not cross the process boundary on their own. Send them
-to the crash reporter through the integration:
+The crash event carries the main hub's scope: user, tags, extra,
+contexts, breadcrumbs, transaction and fingerprint, after the scope's
+event processors have run. Nothing is sent to the crash reporter until
+the crash. At that moment a helper thread serializes the scope, and the
+crash handler sends it to the reporter before it requests the minidump.
 
-```rust
-sentry::with_integration(|minidump: &sentry_minidump::MinidumpIntegration, _| {
-    minidump.set_user(Some(user.clone()));
-});
-```
+The main hub belongs to the thread that first used Sentry, normally the
+one that called `sentry::init`. Every other thread gets its own copy of
+the main hub when it first uses Sentry. So scope set on other threads,
+or on hubs bound with `Hub::run`, does not reach the crash event.
+
+The helper waits at most `scope_timeout` for the scope. If the crash
+happened while the crashing thread held the allocator or the hub lock,
+the helper cannot finish and the event goes out without the scope.
+Attachments on the scope are not carried.
 
 ## Platforms
 
